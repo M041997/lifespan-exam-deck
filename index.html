@@ -120,6 +120,16 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
 .missed .mq{color:var(--muted);font-size:.88rem}
 .missed .ma{font-weight:700}
 .foot{font-size:.8rem;color:var(--muted);text-align:center}
+.lhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:8px 0 0}
+.lhead h2{margin:0;font-family:var(--display);font-size:1.25rem}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.lcols,.lrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
+.lcols{background:var(--accent-soft);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.lcols span,.lrow span{padding:10px 14px;min-width:0;overflow-wrap:anywhere}
+.lrow{border-top:1px solid var(--line)}
+.lrow span:first-child{font-weight:700;border-right:1px solid var(--line)}
+.lrow.weak span:first-child{box-shadow:inset 3px 0 0 var(--bad)}
+@media (max-width:480px){.lcols span,.lrow span{padding:9px 10px;font-size:.9rem}}
 @media (prefers-reduced-motion: reduce){.inner,.progress>div{transition:none}}
 </style>
 </head>
@@ -137,6 +147,7 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
   <nav class="tabs" role="tablist">
     <button class="tab" id="tab-cards" role="tab" aria-selected="true">Flashcards</button>
     <button class="tab" id="tab-quiz" role="tab" aria-selected="false">Practice test</button>
+    <button class="tab" id="tab-list" role="tab" aria-selected="false">All cards</button>
   </nav>
 
   <section class="filters">
@@ -217,6 +228,11 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
       <span class="label" id="rmissedlabel">Missed questions</span>
       <ul class="missed" id="rmissed"></ul>
     </div>
+  </section>
+
+  <section id="view-list" hidden>
+    <p class="num" id="listnote"></p>
+    <div id="list" style="display:flex;flex-direction:column;gap:12px"></div>
   </section>
 
   <p class="foot">Keys: Space flips · 1 / 2 grade a card · 1 / 2 pick an answer · Enter moves on. Progress stays in this browser.</p>
@@ -509,7 +525,7 @@ $("chips").addEventListener("click",e=>{
   const b=e.target.closest(".chip"); if(!b) return;
   const k=b.dataset.ch;
   if(chapters.has(k)){ if(chapters.size===1) return; chapters.delete(k) } else chapters.add(k);
-  store.set("ch",[...chapters]); renderChips(); buildDeck(); renderSetup();
+  store.set("ch",[...chapters]); renderChips(); buildDeck(); renderSetup(); if(view==="list") renderList();
 });
 
 // flashcards
@@ -637,11 +653,24 @@ function setView(v){
   view=v;
   $("tab-cards").setAttribute("aria-selected",v==="cards");
   $("tab-quiz").setAttribute("aria-selected",v==="quiz");
+  $("tab-list").setAttribute("aria-selected",v==="list");
   $("view-cards").style.display=v==="cards"?"flex":"none";
   $("view-quiz").hidden=v!=="quiz";
+  $("view-list").hidden=v!=="list";
+  if(v==="list") renderList();
+}
+function renderList(){
+  const shown=CARDS.filter(c=>chapters.has(c.ch));
+  $("listnote").textContent=`${shown.length} cards. Red edge = one you’ve missed.`;
+  $("list").innerHTML=Object.keys(CH).filter(k=>chapters.has(k)).map(k=>{
+    const cs=CARDS.filter(c=>c.ch===k);
+    return `<div class="lhead"><h2>${esc(CH[k])}</h2><span class="num">${cs.length} cards</span></div>
+    <div class="list"><div class="lcols"><span>Question</span><span>Answer</span></div>${
+      cs.map(c=>`<div class="lrow${weak.has(c.f)?" weak":""}"><span>${esc(c.f)}</span><span>${esc(c.b)}</span></div>`).join("")}</div>`}).join("");
 }
 $("tab-cards").onclick=()=>{setView("cards");renderCard(true)};
 $("tab-quiz").onclick=()=>setView("quiz");
+$("tab-list").onclick=()=>setView("list");
 
 // keyboard
 document.addEventListener("keydown",e=>{
