@@ -544,7 +544,7 @@ let queue=[],total=0,done=0,flipped=false;
 const card=$("card");
 function weakCount(){return CARDS.filter(c=>chapters.has(c.ch)&&weak.has(c.f)).length}
 function buildDeck(){
-  stopPlay();
+  stopPlay(); played=0;
   queue=shuffle(CARDS.filter(c=>chapters.has(c.ch)&&(!weakOnly||weak.has(c.f))));
   total=queue.length; done=0; renderCard(true);
 }
@@ -552,8 +552,9 @@ function renderCard(instant){
   $("weakn").textContent=weakCount();
   $("weakonly").setAttribute("aria-pressed",weakOnly);
   $("dir").textContent=termFirst?"Show: term first":"Show: definition first";
-  $("pbar").style.width=total?(done/total*100)+"%":"0";
-  $("pcount").textContent=`${done} / ${total} cleared`;
+  const inPlay=playing||played>0, pn=inPlay?played:done, pt=inPlay?queue.length:total;
+  $("pbar").style.width=pt?(pn/pt*100)+"%":"0";
+  $("pcount").textContent=`${pn} / ${pt} ${inPlay?"played":"cleared"}`;
   const empty=!queue.length;
   card.hidden=empty; $("actions").hidden=empty; $("deckdone").hidden=!empty;
   if(empty){
@@ -573,7 +574,7 @@ function renderCard(instant){
 }
 function flip(){if(!queue.length) return; flipped=!flipped; card.classList.toggle("flipped",flipped)}
 function grade(knew){
-  stopPlay();
+  stopPlay(); played=0;
   if(!queue.length) return;
   const c=queue.shift();
   if(knew){done++;weak.delete(c.f)} else {weak.add(c.f);queue.splice(Math.min(4,queue.length),0,c)}
@@ -745,7 +746,7 @@ async function startPlay(){
   playing=true; const tok=++playTok;
   if(played>=queue.length) played=0;
   $("play").textContent="❚❚ Pause";
-  if(flipped){flipped=false;renderCard(true)}
+  flipped=false; renderCard(true);
   try{wakeLock=await navigator.wakeLock?.request("screen")}catch(e){wakeLock=null}
   synth.cancel(); playLoop(tok);
 }
