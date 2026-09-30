@@ -130,6 +130,11 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
 .lrow span:first-child{font-weight:700;border-right:1px solid var(--line)}
 .lrow.weak span:first-child{box-shadow:inset 3px 0 0 var(--bad)}
 @media (max-width:480px){.lcols span,.lrow span{padding:9px 10px;font-size:.9rem}}
+.playbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.playbar .btn{padding:9px 18px;min-width:7.5em}
+.playbar label{font-size:.85rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.playbar select{font:inherit;font-size:.85rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.playbar .num{flex-basis:100%}
 @media (prefers-reduced-motion: reduce){.inner,.progress>div{transition:none}}
 </style>
 </head>
@@ -164,6 +169,12 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
       <button class="ghost" id="dir">Show: term first</button>
       <button class="ghost" id="weakonly" aria-pressed="false">Only cards I missed (<span id="weakn">0</span>)</button>
       <button class="ghost" id="reshuffle">Reshuffle</button>
+    </div>
+    <div class="playbar" id="playbar">
+      <button class="btn primary" id="play">▶ Play</button>
+      <label for="ptime">Think time <select id="ptime"><option value="3">3 sec</option><option value="5">5 sec</option><option value="8">8 sec</option></select></label>
+      <label for="prate">Speed <select id="prate"><option value="0.85">0.85×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select></label>
+      <span class="num" id="pstatus">Reads each card out loud: question, pause, answer, next.</span>
     </div>
     <div class="card" id="card" role="button" tabindex="0" aria-label="Flashcard, press Space to flip">
       <div class="inner">
@@ -235,7 +246,7 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
     <div id="list" style="display:flex;flex-direction:column;gap:12px"></div>
   </section>
 
-  <p class="foot">Keys: Space flips · 1 / 2 grade a card · 1 / 2 pick an answer · Enter moves on. Progress stays in this browser.</p>
+  <p class="foot">Keys: Space flips · P plays · 1 / 2 grade a card · 1 / 2 pick an answer · Enter moves on. Progress stays in this browser.</p>
 </div>
 
 <script>
@@ -533,6 +544,7 @@ let queue=[],total=0,done=0,flipped=false;
 const card=$("card");
 function weakCount(){return CARDS.filter(c=>chapters.has(c.ch)&&weak.has(c.f)).length}
 function buildDeck(){
+  stopPlay();
   queue=shuffle(CARDS.filter(c=>chapters.has(c.ch)&&(!weakOnly||weak.has(c.f))));
   total=queue.length; done=0; renderCard(true);
 }
@@ -561,15 +573,16 @@ function renderCard(instant){
 }
 function flip(){if(!queue.length) return; flipped=!flipped; card.classList.toggle("flipped",flipped)}
 function grade(knew){
+  stopPlay();
   if(!queue.length) return;
   const c=queue.shift();
   if(knew){done++;weak.delete(c.f)} else {weak.add(c.f);queue.splice(Math.min(4,queue.length),0,c)}
   store.set("weak",[...weak]); renderCard();
 }
-card.addEventListener("click",flip);
+card.addEventListener("click",()=>{stopPlay();flip()});
 $("miss").onclick=()=>grade(false);
 $("knew").onclick=()=>grade(true);
-$("dir").onclick=()=>{termFirst=!termFirst;store.set("dir",termFirst);renderCard(true)};
+$("dir").onclick=()=>{stopPlay();termFirst=!termFirst;store.set("dir",termFirst);renderCard(true)};
 $("weakonly").onclick=()=>{weakOnly=!weakOnly;buildDeck()};
 $("reshuffle").onclick=buildDeck;
 $("again").onclick=()=>{weakOnly=false;buildDeck()};
@@ -650,6 +663,7 @@ $("rdrill").onclick=()=>{setView("cards");weakOnly=true;queue=shuffle(CARDS.filt
 
 // tabs
 function setView(v){
+  stopPlay();
   view=v;
   $("tab-cards").setAttribute("aria-selected",v==="cards");
   $("tab-quiz").setAttribute("aria-selected",v==="quiz");
@@ -674,10 +688,11 @@ $("tab-list").onclick=()=>setView("list");
 
 // keyboard
 document.addEventListener("keydown",e=>{
-  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  if(e.metaKey||e.ctrlKey||e.altKey||e.target.tagName==="SELECT") return;
   const onButton=e.target.tagName==="BUTTON";
   if(view==="cards"&&queue.length){
-    if((e.key===" "||e.key==="Enter")&&!onButton){e.preventDefault();flip()}
+    if((e.key===" "||e.key==="Enter")&&!onButton){e.preventDefault();stopPlay();flip()}
+    else if(e.key==="p"||e.key==="P") togglePlay();
     else if(e.key==="1"||e.key==="ArrowLeft") grade(false);
     else if(e.key==="2"||e.key==="ArrowRight") grade(true);
   } else if(view==="quiz"&&quiz&&!$("qrun").hidden){
@@ -686,6 +701,64 @@ document.addEventListener("keydown",e=>{
     else if(e.key==="Enter"&&q.picked!==null&&!onButton){e.preventDefault();$("qnext").click()}
   }
 });
+
+// play mode (browser text-to-speech)
+const synth=window.speechSynthesis;
+let playing=false, playTok=0, played=0, wakeLock=null;
+let pTime=store.get("ptime",5), pRate=store.get("prate",1);
+$("ptime").value=String(pTime); $("prate").value=String(pRate);
+$("ptime").onchange=e=>{pTime=+e.target.value;store.set("ptime",pTime)};
+$("prate").onchange=e=>{pRate=+e.target.value;store.set("prate",pRate)};
+if(!synth||!window.SpeechSynthesisUtterance){$("play").disabled=true;$("pstatus").textContent="This browser can’t read out loud. Try Chrome, Safari, or Firefox."}
+function sayable(t){
+  return t.replace(/\bvs\./g,"versus").replace(/1½/g,"one and a half").replace(/↑/g," up").replace(/↓/g," down")
+    .replace(/→/g,", then ").replace(/(\d)–(\d)/g,"$1 to $2").replace(/−/g,"minus ")
+    .replace(/\(([A-Z]{2,3})\)/g,(m,a)=>"("+a.split("").join(" ")+")").replace(/…/g," blank.");
+}
+function speak(text,tok){
+  return new Promise(res=>{
+    if(tok!==playTok) return res();
+    const u=new SpeechSynthesisUtterance(sayable(text));
+    u.rate=pRate; u.lang="en-US";
+    const done=()=>{clearTimeout(t);res()};
+    const t=setTimeout(done,2500+text.length*110/pRate);
+    u.onend=done; u.onerror=done;
+    synth.speak(u);
+  });
+}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function playLoop(tok){
+  const n=queue.length;
+  while(tok===playTok&&played<n){
+    $("pstatus").textContent=`Playing card ${played+1} of ${n}. Press Pause (or P) to stop.`;
+    await speak($("ftext").textContent,tok); if(tok!==playTok) return;
+    await wait(pTime*1000); if(tok!==playTok) return;
+    flipped=true; card.classList.add("flipped");
+    await speak($("btext").textContent,tok); if(tok!==playTok) return;
+    await wait(1500); if(tok!==playTok) return;
+    queue.push(queue.shift()); played++; renderCard();
+  }
+  if(tok===playTok){stopPlay();$("pstatus").textContent=`Finished all ${n} cards. Press Play to hear them again.`;played=0}
+}
+async function startPlay(){
+  if(!synth||!queue.length) return;
+  playing=true; const tok=++playTok;
+  if(played>=queue.length) played=0;
+  $("play").textContent="❚❚ Pause";
+  if(flipped){flipped=false;renderCard(true)}
+  try{wakeLock=await navigator.wakeLock?.request("screen")}catch(e){wakeLock=null}
+  synth.cancel(); playLoop(tok);
+}
+function stopPlay(){
+  if(!playing) return;
+  playing=false; playTok++;
+  try{synth.cancel()}catch(e){}
+  try{wakeLock&&wakeLock.release()}catch(e){} wakeLock=null;
+  $("play").textContent="▶ Play";
+  $("pstatus").textContent="Paused. Press Play to pick up from this card.";
+}
+function togglePlay(){playing?stopPlay():startPlay()}
+$("play").onclick=togglePlay;
 
 renderChips(); renderSetup(); buildDeck();
 </script>
