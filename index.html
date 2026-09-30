@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Lifespan Dev Exam Deck</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: one centered study column: header with exam countdown, mode tabs, chapter chips, a single index-card stage, and a thumb-reachable action row. */
+:root{
+  --bg:#EDF0F4; --surface:#FFFFFF; --ink:#141B26; --muted:#5A6577; --line:#D3D9E2;
+  --accent:#2F43C9; --accent-soft:#E2E6FA; --rule:#E0636B;
+  --good:#16774B; --good-soft:#DCF0E4; --bad:#B3372F; --bad-soft:#F7E0DD;
+  --shadow:rgba(20,27,38,.28);
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E131B; --surface:#171F2A; --ink:#E6EBF2; --muted:#98A3B4; --line:#2A3442;
+  --accent:#8E9CFF; --accent-soft:#222A4D; --rule:#E27C82;
+  --good:#5CC990; --good-soft:#14301F; --bad:#F08B80; --bad-soft:#3A1C19;
+  --shadow:rgba(0,0,0,.6); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E131B; --surface:#171F2A; --ink:#E6EBF2; --muted:#98A3B4; --line:#2A3442;
+  --accent:#8E9CFF; --accent-soft:#222A4D; --rule:#E27C82;
+  --good:#5CC990; --good-soft:#14301F; --bad:#F08B80; --bad-soft:#3A1C19;
+  --shadow:rgba(0,0,0,.6); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:28px 48px;display:flex;flex-direction:column;gap:20px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.eyebrow{margin:0 0 4px;font-size:.75rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(2rem,6vw,2.6rem);line-height:1;letter-spacing:-.02em;text-wrap:balance}
+.countdown{display:flex;align-items:center;gap:10px}
+.countdown b{font-family:var(--display);font-size:2.4rem;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.countdown small{color:var(--muted);font-size:.8rem;line-height:1.3}
+
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px}
+.tab{flex:1;border:0;background:none;padding:10px 12px;border-radius:7px;cursor:pointer;font-weight:700;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--surface)}
+
+.filters{display:flex;flex-direction:column;gap:8px}
+.label{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:.88rem;color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.chip .n{font-variant-numeric:tabular-nums;opacity:.7;margin-left:4px}
+
+.deckbar{display:flex;align-items:center;gap:12px}
+.progress{flex:1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.progress>div{height:100%;width:0;background:var(--good);transition:width .3s}
+.num{font-variant-numeric:tabular-nums;font-size:.85rem;color:var(--muted);white-space:nowrap}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.ghost{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.85rem;color:var(--muted)}
+.ghost[aria-pressed="true"]{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
+.ghost:hover{color:var(--ink)}
+
+.card{display:block;perspective:1600px;cursor:pointer;border-radius:16px}
+.card:focus-visible{outline:none}
+.card:focus-visible .face{outline:2px solid var(--accent);outline-offset:3px}
+.inner{display:grid;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.75,.25,1)}
+.card.flipped .inner{transform:rotateY(180deg)}
+.card.instant .inner{transition:none}
+.face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;min-height:clamp(250px,42vh,360px);
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px 20px;display:flex;flex-direction:column;gap:14px;
+  box-shadow:0 18px 36px -24px var(--shadow)}
+.back{transform:rotateY(180deg)}
+.face .tagrow{display:flex;justify-content:space-between;gap:12px;padding-bottom:10px;border-bottom:2px solid var(--rule);font-size:.78rem;color:var(--muted)}
+.face .main{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;min-width:0}
+.front .main p{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(1.35rem,4.4vw,1.85rem);line-height:1.2;text-wrap:balance}
+.back .main .q{margin:0;font-size:.9rem;color:var(--muted)}
+.back .main .a{margin:0;font-size:clamp(1.1rem,3.6vw,1.3rem);line-height:1.45}
+.face .hint{font-size:.78rem;color:var(--muted)}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:1px solid var(--line);border-radius:12px;padding:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--surface)}
+.btn.bad{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+.btn.good{color:var(--good);border-color:var(--good);background:var(--good-soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;border-radius:4px;padding:0 5px;opacity:.7}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.panel h2{margin:0;font-family:var(--display);font-size:1.5rem;line-height:1.15;text-wrap:balance}
+.panel p{margin:0;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:none;padding:8px 14px;cursor:pointer;font-variant-numeric:tabular-nums;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);font-weight:700}
+
+.qmeta{display:flex;justify-content:space-between;gap:12px;font-size:.8rem;color:var(--muted)}
+.qstem{font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);font-weight:700;margin:0}
+.qprompt{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(1.2rem,4vw,1.5rem);line-height:1.3;text-wrap:balance}
+.qopts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:12px 14px;cursor:pointer;line-height:1.4}
+.opt .k{flex:none;width:1.6em;height:1.6em;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:700;border:1px solid var(--line);background:var(--surface)}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt:disabled{cursor:default}
+.opt.right{border-color:var(--good);background:var(--good-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt.dim{opacity:.55}
+.feedback{font-size:.95rem;padding:10px 14px;border-radius:10px}
+.feedback.ok{background:var(--good-soft);color:var(--good)}
+.feedback.no{background:var(--bad-soft);color:var(--ink)}
+.feedback.no b{color:var(--bad)}
+
+.big{font-family:var(--display);font-weight:800;font-size:3.2rem;line-height:1;font-variant-numeric:tabular-nums}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) 3.5em;gap:10px;align-items:center;font-size:.85rem}
+.bar .track{grid-column:1/-1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar .track div{height:100%;background:var(--accent)}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.missed{display:flex;flex-direction:column;gap:0;margin:0;padding:0;list-style:none}
+.missed li{padding:10px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.missed .mq{color:var(--muted);font-size:.88rem}
+.missed .ma{font-weight:700}
+.foot{font-size:.8rem;color:var(--muted);text-align:center}
+@media (prefers-reduced-motion: reduce){.inner,.progress>div{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Lifespan Development · Ch. 1–3</p>
+      <h1>Exam Deck</h1>
+    </div>
+    <div class="countdown"><b id="days">–</b><small id="dayslabel">days until the exam<br>Sunday, Oct 4</small></div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" id="tab-cards" role="tab" aria-selected="true">Flashcards</button>
+    <button class="tab" id="tab-quiz" role="tab" aria-selected="false">Practice test</button>
+  </nav>
+
+  <section class="filters">
+    <span class="label">Chapters</span>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section id="view-cards" style="display:flex;flex-direction:column;gap:14px">
+    <div class="deckbar">
+      <div class="progress"><div id="pbar"></div></div>
+      <span class="num" id="pcount">0 / 0</span>
+    </div>
+    <div class="opts">
+      <button class="ghost" id="dir">Show: term first</button>
+      <button class="ghost" id="weakonly" aria-pressed="false">Only cards I missed (<span id="weakn">0</span>)</button>
+      <button class="ghost" id="reshuffle">Reshuffle</button>
+    </div>
+    <div class="card" id="card" role="button" tabindex="0" aria-label="Flashcard, press Space to flip">
+      <div class="inner">
+        <div class="face front">
+          <div class="tagrow"><span id="ftag"></span><span id="fkind"></span></div>
+          <div class="main"><p id="ftext"></p></div>
+          <span class="hint">Tap or press Space to flip</span>
+        </div>
+        <div class="face back">
+          <div class="tagrow"><span id="btag"></span><span>Answer</span></div>
+          <div class="main"><p class="q" id="bq"></p><p class="a" id="btext"></p></div>
+          <span class="hint">Did you know it?</span>
+        </div>
+      </div>
+    </div>
+    <div class="actions" id="actions">
+      <button class="btn bad" id="miss">Missed it <kbd>1</kbd></button>
+      <button class="btn good" id="knew">Knew it <kbd>2</kbd></button>
+    </div>
+    <div class="panel" id="deckdone" hidden>
+      <h2 id="donetitle">Deck cleared</h2>
+      <p id="donetext"></p>
+      <div class="row">
+        <button class="btn primary" id="again">Go through again</button>
+        <button class="btn" id="drillweak">Drill missed cards</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-quiz" hidden>
+    <div class="panel" id="qsetup">
+      <h2>Practice test</h2>
+      <p>Multiple choice, drawn at random from the chapters you picked above. Term questions go both ways: sometimes you get the term, sometimes the definition.</p>
+      <div class="row">
+        <span class="label">Questions</span>
+        <div class="seg" id="qlen"></div>
+      </div>
+      <div class="row"><button class="btn primary" id="qstart">Start test</button></div>
+    </div>
+
+    <div class="panel" id="qrun" hidden>
+      <div class="qmeta"><span id="qcount"></span><span id="qch"></span></div>
+      <div class="progress"><div id="qbar"></div></div>
+      <p class="qstem" id="qstem"></p>
+      <h2 class="qprompt" id="qprompt"></h2>
+      <div class="qopts" id="qopts"></div>
+      <div class="feedback" id="qfb" hidden></div>
+      <div class="row">
+        <button class="btn primary" id="qnext" hidden>Next question <kbd>Enter</kbd></button>
+        <button class="ghost" id="qquit">End test</button>
+      </div>
+    </div>
+
+    <div class="panel" id="qresult" hidden>
+      <span class="label">Your score</span>
+      <div class="row" style="gap:16px"><span class="big" id="rpct"></span><p id="rline"></p></div>
+      <div class="bars" id="rbars"></div>
+      <div class="row">
+        <button class="btn primary" id="rdrill">Drill the ones I missed</button>
+        <button class="btn" id="rnew">New test</button>
+      </div>
+      <span class="label" id="rmissedlabel">Missed questions</span>
+      <ul class="missed" id="rmissed"></ul>
+    </div>
+  </section>
+
+  <p class="foot">Keys: Space flips · 1 / 2 grade a card · 1–4 pick an answer · Enter moves on. Progress stays in this browser.</p>
+</div>
+
+<script>
+const CH={"1":"Ch 1 · Foundations","2":"Ch 2 · Birth & newborn","3a":"Ch 3 · Body & mind","3b":"Ch 3 · Emotions & bonds"};
+// [chapter, group, front, back, type]  type 1 = term (quiz asks both ways), 0 = question, 2 = flashcard only (lists)
+const RAW=[
+["1","intro","Lifespan development","The field that examines patterns of growth, change, and stability in behavior across the entire lifespan",1],
+["1","intro","Theory","A broad, organized explanation and prediction concerning a phenomenon",1],
+["1","intro","Hypothesis","A prediction about behavior drawn from a theory",1],
+["1","domain","Physical development","Development involving the body’s physical makeup",1],
+["1","domain","Cognitive development","Changes in intellectual capabilities",1],
+["1","domain","Socioemotional development","How interactions with others and social relationships grow, change, and remain stable",1],
+["1","issues","Continuity","Development is gradual, like a smooth curve",1],
+["1","issues","Discontinuity","Development is stage-like, like a staircase",1],
+["1","issues","Critical period","A period when an experience must occur for a behavior to develop normally",1],
+["1","issues","Sensitive period","A period of susceptibility to certain environmental stimuli; missing them does NOT cause irreversible consequences",1],
+["1","issues","Nature","Traits, abilities, and capacities inherited from one’s parents",1],
+["1","issues","Nurture","Environmental influences that shape behavior",1],
+["1","persp","Psychodynamic perspective","Behavior is motivated by inner forces and conflicts that are generally beyond awareness and control",1],
+["1","persp","Behavioral (learning) perspective","Development is behavioral change caused by environmental influences",1],
+["1","persp","Cognitive perspective","Emphasizes the mental aspects of development",1],
+["1","persp","Contextual (ecological) perspective","The environment’s impact on development; the relationship is reciprocal",1],
+["1","persp","Evolutionary perspective","Genetic inheritance determines not only physical traits but certain personality traits and social behaviors",1],
+["1","list","Name the 5 major theoretical perspectives","Psychodynamic, Behavioral (Learning), Cognitive, Contextual (Ecological), Evolutionary",2],
+["1","list","Freud vs. Erikson: what is the central conflict about?","Freud: satisfying the sex drive (psychosexual). Erikson: psychosocial conflicts. Both say development depends on resolving conflicts.",2],
+["1","freud","Id","Personality component that wants immediate gratification",1],
+["1","freud","Ego","The rational component of personality",1],
+["1","freud","Superego","Makes sure one behaves in a morally acceptable way",1],
+["1","freudstage","Oral stage","First year: the mouth is the focus of pleasure as the baby sucks and bites",1],
+["1","freudstage","Anal stage","Second year: the anus is the focus of pleasure as the baby learns to control elimination",1],
+["1","freudstage","Phallic stage","Ages 3–6: pleasure from genital stimulation; fantasies about the opposite-sex parent and guilt about them",1],
+["1","freudstage","Latency stage","Age 7 to puberty: sexual urges submerged; focus on mastering skills adults value",1],
+["1","freudstage","Genital stage","Adolescence on: adult sexual desires they seek to satisfy; extends through adulthood",1],
+["1","erikson","Trust vs. Mistrust","First year: trust that others will meet basic needs, or mistrust",1],
+["1","erikson","Autonomy vs. Shame and Doubt","Second year: become self-sufficient, or doubt own abilities",1],
+["1","erikson","Initiative vs. Guilt","Ages 3–6: undertake adultlike activities, or internalize the limits set by parents",1],
+["1","erikson","Industry vs. Inferiority","Age 7 to puberty: become competent at mastering new skills, or feel inferior",1],
+["1","erikson","Identity vs. Role Confusion","Adolescence: “Who am I?” Establish political and vocational identities, or be confused about roles",1],
+["1","erikson","Intimacy vs. Isolation","Early adulthood: seek companionship and love, or become isolated from fear of rejection",1],
+["1","erikson","Generativity vs. Stagnation","Middle age: contribute to society through meaningful work and/or family, or stagnate",1],
+["1","erikson","Integrity vs. Despair","Old age: make meaning of one’s life, or despair at goals never reached",1],
+["1","list","How many stages does Erikson propose, and what defines each?","8 stages, each defined by a unique crisis or challenge",2],
+["1","learn","Classical conditioning","Learning from the association of stimuli",1],
+["1","learn","Operant conditioning","Learning to repeat or stop behaviors because of the consequences they bring",1],
+["1","learn","Observational learning","Learning from watching others",1],
+["1","reinf","Reinforcement","Anything that increases the likelihood a behavior will happen again",1],
+["1","reinf","Positive reinforcement","ADD a pleasant stimulus to increase a behavior",1],
+["1","reinf","Negative reinforcement","REMOVE an aversive stimulus to increase a behavior",1],
+["1","reinf","Punishment","Anything following a behavior that causes it to stop",1],
+["1","who","Who discovered classical conditioning (bell + food → salivation)?","Ivan Pavlov",0],
+["1","who","Who believed classical conditioning could shape human behavior (the white-rat fear study)?","John Watson",0],
+["1","who","Who proposed 8 psychosocial stages?","Erik Erikson",0],
+["1","who","Who proposed psychosexual stages and the id, ego, and superego?","Sigmund Freud",0],
+["1","who","Who described 5 levels of the environment (micro- to chronosystem)?","Bronfenbrenner",0],
+["3a","who","Who studied the origins of knowledge and proposed 4 stages of cognitive development?","Jean Piaget",0],
+["3a","who","Who studied 2- and 3-month-olds’ memory with the mobile study?","Rovee-Collier",0],
+["1","scen","Lightning, then thunder. After many repeats you wince at the lightning. What kind of learning?","Classical conditioning",0],
+["1","scen","A seal balances a ball, gets a fish, and balances the ball more often. What kind of learning?","Operant conditioning",0],
+["1","watson","Watson’s study: the loud noise was the…","Unconditioned stimulus (US)",0],
+["1","watson","Watson’s study: the fear of the loud noise was the…","Unconditioned response (UR)",0],
+["1","watson","Watson’s study: the white rat, after pairing, was the…","Conditioned stimulus (CS)",0],
+["1","watson","Watson’s study: fear of the rat was the…","Conditioned response (CR)",0],
+["1","bronf","Microsystem","The immediate, everyday environment",1],
+["1","bronf","Mesosystem","Connects the microsystems",1],
+["1","bronf","Exosystem","Not experienced firsthand but still influences development",1],
+["1","bronf","Macrosystem","Larger cultural influences",1],
+["1","bronf","Chronosystem","How the systems change over time",1],
+["1","method","Naturalistic observation","Observing naturally occurring behavior in a real-world setting",1],
+["1","method","Structured observation","Observing in a setting the experimenter controls; useful for behaviors hard to see naturally",1],
+["1","method","Self-reports","People answer questions about specific topics; weakness is response bias",1],
+["1","method","Case study","Observing an individual or small group over a long period of time",1],
+["1","methodq","Main disadvantages of naturalistic observation?","People act differently when they know they’re watched, and the observer can introduce bias",0],
+["1","methodq","Main advantage of naturalistic observation?","A sample of what people really do in their natural environment",0],
+["1","methodq","Main disadvantage of self-reports?","Response biases",0],
+["1","corr","Correlational design","Describes how strongly variables are related",1],
+["1","corr","Experimental design","Isolates cause and effect",1],
+["1","corr","Positive correlation","Variables move in the same direction (study time ↑, test score ↑)",1],
+["1","corr","Negative correlation","Variables move in opposite directions (study time ↑, partying ↓)",1],
+["1","corr","Third variable problem","An extraneous variable may be causing the observed relationship",1],
+["1","corrq","What range do correlations fall in, and what makes one strong?","−1.00 to +1.00; the closer to either end, the stronger",0],
+["1","corrq","Aggressive TV and viewer aggression are correlated. What third variable did the slides name?","A high energy level causing both",0],
+["1","corrq","Does correlation equal causation?","No",0],
+["1","exp","Independent variable","The variable the researcher manipulates",1],
+["1","exp","Dependent variable","The variable the researcher measures",1],
+["1","exp","Experimental group","The group that receives the treatment",1],
+["1","exp","Control group","The group that does not receive the treatment",1],
+["1","expq","Music-while-studying experiment: what is the IV?","Presence of music (music vs. no music)",0],
+["1","expq","Music-while-studying experiment: what is the DV?","Exam performance",0],
+["1","expq","Texting-while-driving experiment: what is the IV?","Texting (text vs. no text)",0],
+["1","expq","Texting-while-driving experiment: what is the DV?","Driving errors",0],
+["1","age","Longitudinal design","The same people observed repeatedly at different ages",1],
+["1","age","Cross-sectional design","Different people of different ages measured at a single time",1],
+["1","age","Sequential design","Different sequences (groups) of children tested longitudinally",1],
+["1","age","Practice effects","Improvement from repeated practice with a task; a disadvantage of longitudinal designs",1],
+["1","age","Cohort effects are a disadvantage of which design?","Cross-sectional design",0],
+["1","ageq","Main advantage of a longitudinal design?","The most direct way to study development",0],
+["1","ageq","Disadvantages of a longitudinal design?","Expensive, long-term commitment, practice effects",0],
+["1","ageq","Main advantage of a cross-sectional design?","Less time-consuming and less expensive",0],
+["1","ageq","Disadvantages of a cross-sectional design?","A disconnected snapshot of development; cohort effects",0],
+["1","ageq","Disadvantages of a sequential design?","Less info on continuity than longitudinal; more time-consuming than cross-sectional",0],
+["1","list","The 4 research ethics guidelines","Protection from harm, informed consent, debriefing, confidentiality",2],
+
+["2","deliver","Obstetrician","A physician who specializes in delivering babies",1],
+["2","deliver","Midwife","A healthcare professional who specializes in childbirth",1],
+["2","deliver","Doula","Gives continuous physical, emotional, and educational support to the mother; does NOT deliver the baby",1],
+["2","birthm","Epidural","Anesthesia that produces numbness from the waist down",1],
+["2","birthm","Natural childbirth","Reduces pain by reducing fear, through education about childbirth and relaxation during delivery",1],
+["2","birthm","Lamaze method","Teaches pain management through relaxation and breathing exercises",1],
+["2","birthm","Cesarean delivery","Baby is surgically removed from the uterus; used for fetal distress and breech position",1],
+["2","labor","Stage 1 of labor","Uterine contractions start (every 8–10 min, 30 sec long → every 2 min, up to 2 min long); ends when the cervix is fully enlarged",1],
+["2","labor","Stage 2 of labor","Baby is pushed through the birth canal (crowning); about 90 minutes; ends when the baby has fully left the mother’s body",1],
+["2","labor","Stage 3 of labor","The placenta and other membranes are expelled; the quickest stage, just a few minutes",1],
+["2","laborq","Which stage of labor includes crowning?","Stage 2",0],
+["2","laborq","Which stage of labor is the quickest and easiest?","Stage 3",0],
+["2","laborq","Which stage of labor ends when the cervix is fully enlarged?","Stage 1",0],
+["2","laborq","Which stage of labor lasts about 90 minutes?","Stage 2",0],
+["2","misc","Anoxia","A condition caused by oxygen deprivation; can result in death or brain damage",1],
+["2","misc","Postpartum depression","Depression after giving birth; biology and experience both contribute",1],
+["2","misc","SIDS","A healthy baby dies suddenly for no apparent reason; exact cause unknown",1],
+["2","misc","Apgar scale","Used to diagnose the physical state of newborn infants",1],
+["2","list","SIDS risk factors","Prematurity or low birth weight, sleeping on the stomach, parents who smoke, winter",2],
+["2","list","The 5 Apgar signs","Heart rate, respiratory effort, muscle tone, reflex responsivity, color (each scored 0–2)",2],
+["2","apgarq","What Apgar score indicates an emergency?","3 or below",0],
+["2","apgarq","How many points can each Apgar sign earn?","0 to 2",0],
+["2","apgar","Apgar points: heart rate over 100","2",0],
+["2","apgar","Apgar points: slow heart rate (below 100)","1",0],
+["2","apgar","Apgar points: slow, irregular breathing","1",0],
+["2","apgar","Apgar points: flaccid muscle tone","0",0],
+["2","apgar","Apgar points: reflex response is a grimace","1",0],
+["2","apgar","Apgar points: body pink, extremities blue","1",0],
+["2","apgar","Apgar points: vigorous cry to a reflex test","2",0],
+["2","apgar","Apgar points: color blue or pale","0",0],
+["2","weight","Preterm infants","Born several weeks or more before the due date; obstacles include immaturity of the lungs",1],
+["2","weight","Low birth-weight infants","Weigh around 5.5 pounds at birth",1],
+["2","weight","Small-for-gestational-age infants","Below expected weight for the length of pregnancy; not necessarily preterm; can be more serious than prematurity",1],
+["2","list","Potential causes of preterm birth","Problems with the placenta, multiple births, maternal age",2],
+["2","reflex","Rooting reflex","Stroke the cheek → baby turns toward it and opens its mouth",1],
+["2","reflex","Sucking reflex","Baby sucks an object placed in its mouth",1],
+["2","reflex","Withdrawal reflex","Baby pulls its foot away after a prick on the sole",1],
+["2","reflex","Palmar grasp reflex","Baby grips an object touching its palm",1],
+["2","reflex","Stepping reflex","Baby makes rhythmic stepping movements when held upright",1],
+["2","states","Alert inactivity","Newborn state: calm and attentive",1],
+["2","states","Waking activity","Newborn state: eyes open but unfocused",1],
+["2","list","The 4 newborn states of arousal","Alert inactivity, waking activity, crying, sleeping",2],
+["2","sleepq","How many hours a day do newborns sleep?","16 to 18 hours",0],
+["2","sleepq","What two types of sleep do newborns alternate between?","Non-REM and REM (rapid-eye-movement)",0],
+
+["3a","growth","Cephalocaudal trend","Growth begins in the region of the head",1],
+["3a","growth","Proximodistal trend","Growth moves from the center of the body out to the extremities",1],
+["3a","neuron","Neuron","Basic building block of the nervous system; receives and transmits information",1],
+["3a","neuron","Soma (cell body)","The cell’s life support system",1],
+["3a","neuron","Dendrite","Receives information",1],
+["3a","neuron","Axon","Sends information",1],
+["3a","neuron","Myelin sheath","Surrounds the axon and speeds neural impulses",1],
+["3a","neuron","Presynaptic terminal","The point from which axons release chemicals (terminal buttons, end bulb)",1],
+["3a","neuron","Neurotransmitters","Chemical messengers that carry messages between cells",1],
+["3a","neuron","Synapse","The gap between the sending axon and the receiving dendrite",1],
+["3a","neuron","Synaptic pruning","Rarely used synaptic connections are removed",1],
+["3a","neuron","Plasticity","How much a developing structure or behavior can be modified by experience; greater in children",1],
+["3a","motor","Motor milestone: lifts head up","2 months",0],
+["3a","motor","Motor milestone: rolls over","3 months",0],
+["3a","motor","Motor milestone: sits without support","6 months",0],
+["3a","motor","Motor milestone: stands holding on","7 months",0],
+["3a","motor","Motor milestone: crawls","8 months",0],
+["3a","motor","Motor milestone: walks holding on","9 months",0],
+["3a","motor","Motor milestone: stands alone","11 months",0],
+["3a","motor","Motor milestone: walks alone","12 months (1 year)",0],
+["3a","motor","Motor milestone: walks up steps","17 months",0],
+["3a","motor","Motor milestone: kicks a ball forward","18 months",0],
+["3a","list","Can practice change when motor milestones happen?","Yes, practice can affect the age milestones are reached",2],
+["3a","nutr","Malnutrition","Damaging in infancy: children are listless and inactive; chronic malnutrition delays puberty",1],
+["3a","list","Advantages of breast-feeding","Less illness; less diarrhea and constipation; easier move to solid foods",2],
+["3a","list","Advantage of bottle-feeding","Generally provides the same nutrients as breast milk",2],
+["3a","sensem","Observational studies (infant senses)","Watching the infant’s overt behavior",1],
+["3a","sensem","Preferential looking","Two stimuli are shown to see which the infant prefers",1],
+["3a","sensem","Habituation studies","Rely on infants preferring novel stimuli over familiar ones",1],
+["3a","sense","Auditory threshold","The quietest sound one can hear",1],
+["3a","sense","Visual acuity","How well one can see; newborns are very nearsighted",1],
+["3a","sense","Intermodal perception","Perceiving an object or event with more than one sense (the bumpy vs. smooth pacifier)",1],
+["3a","senseq","What taste do newborns initially prefer?","Sweet",0],
+["3a","senseq","By what age is infant visual acuity close to adult level?","7–8 months",0],
+["3a","senseq","How does newborn hearing compare to adults’?","Responds to sound and locates objects by it, but not as good as adults",0],
+["3a","piaget","Scheme","A representation that organizes knowledge",1],
+["3a","piaget","Assimilation","New information is incorporated into existing knowledge",1],
+["3a","piaget","Accommodation","Schemes are modified to include new information",1],
+["3a","piaget","Equilibrium","Reorganizing schemes to restore balance",1],
+["3a","piaget","Object permanence","Understanding that objects keep existing when they can’t be seen, heard, or touched",1],
+["3a","piaget","A-not-B error","Infant searches the familiar hiding place instead of the new one",1],
+["3a","list","Piaget’s 4 stages","Sensorimotor, preoperational, concrete operational, formal operational",2],
+["3a","list","The sensorimotor stage: ages and 3 fronts","Birth–2 years: adapting to/exploring the environment, understanding objects, rudimentary use of symbols",2],
+["3a","list","Main criticism of Piaget","His theory may underestimate infants’ abilities",2],
+["3a","info","Information processing","How children manipulate information, monitor it, and create strategies for it",1],
+["3a","info","Encoding","Getting information into memory",1],
+["3a","info","Automaticity","Processing information with little or no effort",1],
+["3a","mem","Memory","The retention of information over time",1],
+["3a","mem","Implicit memory","Unconscious memory of skills and routines done automatically",1],
+["3a","mem","Explicit memory","Conscious memory of facts and experiences",1],
+["3a","mem","Infantile amnesia","Inability to remember early-life events; linked to inadequate language and sense of self",1],
+["3a","list","Rovee-Collier’s 3 findings","Past events can be remembered; they are forgotten over time; a cue can help retrieve the memory",2],
+["3a","bayley","What do the Bayley Scales assess, and for what ages?","Mental and motor abilities of 2- to 42-month-olds",0],
+["3a","bayley","What predicts later development better than the Bayley Scales?","Habituation",0],
+["3a","lang","Phonology","The sounds of a language",1],
+["3a","lang","Semantics","Individual words and their meanings",1],
+["3a","lang","Grammar / syntax","The structure of a language",1],
+["3a","lang","Pragmatics","How to communicate effectively",1],
+["3a","lang2","Infant-directed speech","The style adults use with infants; helps babies learn language",1],
+["3a","lang2","Cooing","About 2 months: one-syllable vowel-like sounds (“ah,” “ooh”)",1],
+["3a","lang2","Babbling","About 6 months: consonant + vowel (“baba,” “dada”); universal",1],
+["3a","lang2","Underextension","Using a word too narrowly",1],
+["3a","lang2","Overextension","Using a word too broadly",1],
+["3a","lang2","Referential style","Objects, people, actions",1],
+["3a","lang2","Expressive style","Social phrases",1],
+["3a","lang2","Telegraphic speech","Only the words directly relevant to meaning (“more juice”)",1],
+["3a","langq","A child says “more juice.”","Telegraphic speech",0],
+["3a","langq","A 6-month-old says “baba” or “dada.”","Babbling",0],
+["3a","langq","A 2-month-old says “ah” or “ooh.”","Cooing",0],
+["3a","list","When can children make two-word sentences?","By about 1½ years",2],
+["3a","list","Comprehension vs. production in infants","Infants understand more words than they can say",2],
+["3a","langorig","Learning theory approach (language)","Language follows the basic laws of reinforcement and conditioning",1],
+["3a","langorig","Nativist approach (language)","A genetically determined, innate mechanism directs language development",1],
+["3a","langorig","Interactionist approach (language)","Language comes from a combination of genetic and environmental circumstances",1],
+
+["3b","list","The 6 basic emotions","Anger, fear, happiness, sadness, surprise, disgust",2],
+["3b","list","The 3 elements of an emotion","Physiological change, a cognitive component, overt behavior",2],
+["3b","emo","When do distress and pleasure appear?","Newborns",0],
+["3b","emo","When do social smiling (joy) and sadness appear?","2–3 months",0],
+["3b","emo","When does anger appear?","4–6 months",0],
+["3b","emo","When do fear and stranger anxiety appear?","6 months",0],
+["3b","emo","When does separation anxiety appear?","About 7 months",0],
+["3b","emot","Social smiling","A smile in response to an external stimulus",1],
+["3b","emot","Stranger anxiety","An infant’s fear of and wariness toward strangers",1],
+["3b","emot","Separation anxiety","Distress when a caregiver leaves",1],
+["3b","emot","Social referencing","Reading others’ emotional cues to decide how to act in a situation",1],
+["3b","emot","Attachment","The socio-emotional bond a child forms with a responsive, caring person",1],
+["3b","emot","Temperament","A way of responding to the environment that is stable across situations",1],
+["3b","attview","Psychoanalytic view of attachment","Attachment grows out of the mother satisfying the child’s oral needs",1],
+["3b","attview","Contact comfort view of attachment","Feeding isn’t crucial; the need for contact comfort is",1],
+["3b","attview","Evolutionary view of attachment","Forming attachments makes you more likely to survive",1],
+["3b","strange","What is the Strange Situation used for?","Measuring attachment",0],
+["3b","list","The Strange Situation, in short","8 steps: observer shows room and leaves → infant explores 3 min → stranger enters, mom leaves → stranger comforts if needed → after 3 min mom returns → mom leaves again (“bye-bye”) → stranger calms/plays → after 3 min mom returns, stranger leaves",2],
+["3b","attpat","Secure attachment","Plays comfortably with mom present, cries when she leaves, easily comforted when she returns",1],
+["3b","attpat","Avoidant attachment","Indifferent to mom; usually doesn’t cry when she leaves; may turn or look away when she returns",1],
+["3b","attpat","Resistant (ambivalent) attachment","Stays close to mom; extreme reaction when she leaves; not comforted on return; seeks contact while resisting comfort",1],
+["3b","attpat","Disorganized (disoriented) attachment","Dazed, confused, fearful; may approach mom on return while refusing to look at her",1],
+["3b","attscen","Indifferent to mom’s presence, doesn’t cry when she leaves, looks away when she returns.","Avoidant",0],
+["3b","attscen","Extreme reaction when mom leaves; not comforted when she returns; seeks contact while resisting her comfort.","Resistant (ambivalent)",0],
+["3b","attscen","Plays comfortably with mom present, cries when she leaves, easily comforted when she returns.","Secure",0],
+["3b","attscen","Dazed, confused, and fearful; approaches mom on her return while refusing to look at her.","Disorganized (disoriented)",0],
+["3b","attscen","Which attachment pattern is NOT one of the insecure types?","Secure",2],
+["3b","dad","Infants usually prefer fathers for…","Play",0],
+["3b","dad","Infants usually prefer mothers for…","Comfort",0],
+["3b","list","Who do infants usually attach to first?","Mothers first, then fathers",2],
+["3b","temp","Easy temperament","Happy; adjusts well to new situations",1],
+["3b","temp","Difficult temperament","Irritable and active; responds intensely and negatively to new situations",1],
+["3b","temp","Slow-to-warm-up temperament","Low activity; withdraws at first from new situations; needs more time to adapt",1],
+["3b","list","How stable is temperament?","Moderately stable through infancy, childhood, and adolescence",2]
+];
+const CARDS=RAW.map((r,i)=>({ch:r[0],g:r[1],f:r[2],b:r[3],t:r[4],id:i}));
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem("ld-"+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){try{localStorage.setItem("ld-"+k,JSON.stringify(v))}catch(e){}}};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let chapters=new Set(store.get("ch",Object.keys(CH)).filter(k=>CH[k]));
+if(!chapters.size) chapters=new Set(Object.keys(CH));
+let weak=new Set(store.get("weak",[]));
+let termFirst=store.get("dir",true);
+let weakOnly=false, view="cards";
+
+// countdown
+(function(){
+  const t=new Date(); t.setHours(0,0,0,0);
+  const d=Math.round((new Date(2026,9,4)-t)/864e5);
+  if(d>1){$("days").textContent=d}
+  else if(d===1){$("days").textContent=1;$("dayslabel").innerHTML="day until the exam<br>Sunday, Oct 4"}
+  else if(d===0){$("days").textContent="Today";$("dayslabel").innerHTML="is exam day.<br>You’ve got this."}
+  else{$("days").textContent="✓";$("dayslabel").innerHTML="Exam was<br>Sunday, Oct 4"}
+})();
+
+// chapter chips
+function renderChips(){
+  $("chips").innerHTML=Object.entries(CH).map(([k,v])=>
+    `<button class="chip" data-ch="${k}" aria-pressed="${chapters.has(k)}">${esc(v)}<span class="n">${CARDS.filter(c=>c.ch===k).length}</span></button>`).join("");
+}
+$("chips").addEventListener("click",e=>{
+  const b=e.target.closest(".chip"); if(!b) return;
+  const k=b.dataset.ch;
+  if(chapters.has(k)){ if(chapters.size===1) return; chapters.delete(k) } else chapters.add(k);
+  store.set("ch",[...chapters]); renderChips(); buildDeck(); renderSetup();
+});
+
+// flashcards
+let queue=[],total=0,done=0,flipped=false;
+const card=$("card");
+function weakCount(){return CARDS.filter(c=>chapters.has(c.ch)&&weak.has(c.f)).length}
+function buildDeck(){
+  queue=shuffle(CARDS.filter(c=>chapters.has(c.ch)&&(!weakOnly||weak.has(c.f))));
+  total=queue.length; done=0; renderCard(true);
+}
+function renderCard(instant){
+  $("weakn").textContent=weakCount();
+  $("weakonly").setAttribute("aria-pressed",weakOnly);
+  $("dir").textContent=termFirst?"Show: term first":"Show: definition first";
+  $("pbar").style.width=total?(done/total*100)+"%":"0";
+  $("pcount").textContent=`${done} / ${total} cleared`;
+  const empty=!queue.length;
+  card.hidden=empty; $("actions").hidden=empty; $("deckdone").hidden=!empty;
+  if(empty){
+    const wc=weakCount();
+    if(total===0&&weakOnly){$("donetitle").textContent="No missed cards here";$("donetext").textContent="Nothing marked “missed” in these chapters yet. Turn off the filter to study everything."}
+    else{$("donetitle").textContent="Deck cleared";$("donetext").textContent=wc?`${wc} card${wc>1?"s are":" is"} still marked as missed in these chapters.`:"No cards marked as missed. Try the practice test."}
+    $("drillweak").hidden=!wc;
+    return;
+  }
+  const c=queue[0], rev=c.t===1&&!termFirst;
+  if(instant||flipped){card.classList.add("instant");flipped=false;card.classList.remove("flipped");void card.offsetWidth;card.classList.remove("instant")}
+  $("ftag").textContent=$("btag").textContent=CH[c.ch];
+  $("fkind").textContent=c.t===1?(rev?"Name the term":"Define it"):"Answer it";
+  $("ftext").textContent=rev?c.b:c.f;
+  $("bq").textContent=rev?c.b:c.f;
+  $("btext").textContent=rev?c.f:c.b;
+}
+function flip(){if(!queue.length) return; flipped=!flipped; card.classList.toggle("flipped",flipped)}
+function grade(knew){
+  if(!queue.length) return;
+  const c=queue.shift();
+  if(knew){done++;weak.delete(c.f)} else {weak.add(c.f);queue.splice(Math.min(4,queue.length),0,c)}
+  store.set("weak",[...weak]); renderCard();
+}
+card.addEventListener("click",flip);
+$("miss").onclick=()=>grade(false);
+$("knew").onclick=()=>grade(true);
+$("dir").onclick=()=>{termFirst=!termFirst;store.set("dir",termFirst);renderCard(true)};
+$("weakonly").onclick=()=>{weakOnly=!weakOnly;buildDeck()};
+$("reshuffle").onclick=buildDeck;
+$("again").onclick=()=>{weakOnly=false;buildDeck()};
+$("drillweak").onclick=()=>{weakOnly=true;buildDeck()};
+
+// practice test
+let qLen=store.get("qlen",50), quiz=null;
+function quizPool(){return CARDS.filter(c=>c.t!==2&&chapters.has(c.ch))}
+function renderSetup(){
+  const n=quizPool().length;
+  $("qlen").innerHTML=[20,50,100].map(v=>`<button data-n="${v}" aria-pressed="${v===qLen}" ${v>n&&v!==20?"disabled":""}>${Math.min(v,n)}</button>`).join("");
+}
+$("qlen").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;qLen=+b.dataset.n;store.set("qlen",qLen);renderSetup()});
+function makeQ(c){
+  const rev=c.t===1&&Math.random()<.5;
+  const pick=x=>rev?x.f:x.b, answer=pick(c);
+  const alike=x=>x.t===c.t&&x!==c;
+  let opts=shuffle([...new Set(CARDS.filter(x=>x.g===c.g&&alike(x)).map(pick))].filter(v=>v!==answer)).slice(0,3);
+  if(opts.length<3){
+    const extra=shuffle([...new Set(CARDS.filter(x=>x.ch===c.ch&&x.g!==c.g&&alike(x)).map(pick))].filter(v=>v!==answer&&!opts.includes(v)));
+    opts=opts.concat(extra.slice(0,Math.max(0,(opts.length<2?3:opts.length)-opts.length)));
+  }
+  const stem=rev?"Which term matches?":c.t===1?"What does this mean?":"Choose the best answer";
+  return {c,rev,stem,prompt:rev?c.b:c.f,answer,options:shuffle([answer,...opts]),picked:null};
+}
+function startQuiz(){
+  const pool=shuffle(quizPool());
+  quiz={qs:pool.slice(0,Math.min(qLen,pool.length)).map(makeQ),i:0};
+  $("qsetup").hidden=true;$("qresult").hidden=true;$("qrun").hidden=false;renderQ();
+}
+function renderQ(){
+  const q=quiz.qs[quiz.i], n=quiz.qs.length;
+  $("qcount").textContent=`Question ${quiz.i+1} of ${n}`;
+  $("qch").textContent=CH[q.c.ch];
+  $("qbar").style.width=(quiz.i/n*100)+"%";
+  $("qstem").textContent=q.stem;
+  $("qprompt").textContent=q.prompt;
+  $("qopts").innerHTML=q.options.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${k+1}</span><span>${esc(o)}</span></button>`).join("");
+  $("qfb").hidden=true;$("qnext").hidden=true;
+}
+function choose(k){
+  const q=quiz.qs[quiz.i]; if(q.picked!==null||k>=q.options.length) return;
+  q.picked=k;
+  const ok=q.options[k]===q.answer;
+  [...$("qopts").children].forEach((b,j)=>{b.disabled=true;
+    if(q.options[j]===q.answer) b.classList.add("right"); else if(j===k) b.classList.add("wrong"); else b.classList.add("dim")});
+  const fb=$("qfb"); fb.hidden=false;
+  if(ok){fb.className="feedback ok";fb.textContent="Correct."}
+  else{fb.className="feedback no";fb.innerHTML=`<b>Not quite.</b> ${esc(q.c.t===1?q.c.f+": "+q.c.b:q.answer)}`}
+  if(!ok) weak.add(q.c.f); else weak.delete(q.c.f);
+  store.set("weak",[...weak]);
+  const last=quiz.i===quiz.qs.length-1;
+  $("qnext").innerHTML=(last?"See my score":"Next question")+" <kbd>Enter</kbd>";
+  $("qnext").hidden=false; $("qnext").focus();
+}
+$("qopts").addEventListener("click",e=>{const b=e.target.closest(".opt");if(b) choose(+b.dataset.k)});
+$("qnext").onclick=()=>{if(quiz.i<quiz.qs.length-1){quiz.i++;renderQ()}else showResult()};
+$("qquit").onclick=()=>{quiz.qs=quiz.qs.filter(q=>q.picked!==null); quiz.qs.length?showResult():resetQuiz()};
+$("qstart").onclick=startQuiz;
+$("rnew").onclick=resetQuiz;
+function resetQuiz(){quiz=null;$("qrun").hidden=true;$("qresult").hidden=true;$("qsetup").hidden=false;renderSetup()}
+function showResult(){
+  const qs=quiz.qs, right=qs.filter(q=>q.options[q.picked]===q.answer);
+  const pct=Math.round(right.length/qs.length*100);
+  $("qrun").hidden=true;$("qresult").hidden=false;
+  $("rpct").textContent=pct+"%";
+  $("rline").textContent=`${right.length} of ${qs.length} correct.`+(pct>=90?" Exam-ready on this material.":pct>=75?" Solid. Drill the misses and run it again.":" Drill the misses below, then take a fresh test.");
+  $("rbars").innerHTML=Object.keys(CH).map(k=>{
+    const s=qs.filter(q=>q.c.ch===k); if(!s.length) return "";
+    const r=s.filter(q=>q.options[q.picked]===q.answer).length;
+    return `<div class="bar"><span>${esc(CH[k])}</span><span class="v">${r}/${s.length}</span><div class="track"><div style="width:${r/s.length*100}%"></div></div></div>`}).join("");
+  const missed=qs.filter(q=>q.options[q.picked]!==q.answer);
+  $("rdrill").hidden=!missed.length; $("rmissedlabel").hidden=!missed.length;
+  $("rmissed").innerHTML=missed.map(q=>`<li><span class="mq">${esc(q.prompt)}</span><span class="ma">${esc(q.answer)}</span></li>`).join("");
+  quiz.missed=missed.map(q=>q.c.f);
+}
+$("rdrill").onclick=()=>{setView("cards");weakOnly=true;queue=shuffle(CARDS.filter(c=>quiz.missed.includes(c.f)));total=queue.length;done=0;renderCard(true)};
+
+// tabs
+function setView(v){
+  view=v;
+  $("tab-cards").setAttribute("aria-selected",v==="cards");
+  $("tab-quiz").setAttribute("aria-selected",v==="quiz");
+  $("view-cards").style.display=v==="cards"?"flex":"none";
+  $("view-quiz").hidden=v!=="quiz";
+}
+$("tab-cards").onclick=()=>{setView("cards");renderCard(true)};
+$("tab-quiz").onclick=()=>setView("quiz");
+
+// keyboard
+document.addEventListener("keydown",e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  const onButton=e.target.tagName==="BUTTON";
+  if(view==="cards"&&queue.length){
+    if((e.key===" "||e.key==="Enter")&&!onButton){e.preventDefault();flip()}
+    else if(e.key==="1"||e.key==="ArrowLeft") grade(false);
+    else if(e.key==="2"||e.key==="ArrowRight") grade(true);
+  } else if(view==="quiz"&&quiz&&!$("qrun").hidden){
+    const q=quiz.qs[quiz.i];
+    if(/^[1-4]$/.test(e.key)) choose(+e.key-1);
+    else if(e.key==="Enter"&&q.picked!==null&&!onButton){e.preventDefault();$("qnext").click()}
+  }
+});
+
+renderChips(); renderSetup(); buildDeck();
+</script>
+</body>
+</html>
