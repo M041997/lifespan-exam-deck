@@ -191,8 +191,8 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
       </div>
     </div>
     <div class="actions" id="actions">
-      <button class="btn bad" id="miss">Missed it <kbd>1</kbd></button>
-      <button class="btn good" id="knew">Knew it <kbd>2</kbd></button>
+      <button class="btn bad" id="miss">Missed it <kbd>← 1</kbd></button>
+      <button class="btn good" id="knew">Knew it <kbd>→ 2</kbd></button>
     </div>
     <div class="panel" id="deckdone" hidden>
       <h2 id="donetitle">Deck cleared</h2>
@@ -223,7 +223,7 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
       <div class="qopts" id="qopts"></div>
       <div class="feedback" id="qfb" hidden></div>
       <div class="row">
-        <button class="btn primary" id="qnext" hidden>Next question <kbd>Enter</kbd></button>
+        <button class="btn primary" id="qnext" hidden>Next question <kbd>→</kbd></button>
         <button class="ghost" id="qquit">End test</button>
       </div>
     </div>
@@ -246,7 +246,7 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
     <div id="list" style="display:flex;flex-direction:column;gap:12px"></div>
   </section>
 
-  <p class="foot">Keys: Space flips · P plays · 1 / 2 grade a card · 1 / 2 pick an answer · Enter moves on. Progress stays in this browser.</p>
+  <p class="foot">Flashcards: ← missed · → knew · ↑ ↓ or Space flips · P plays. Test: ↑ top answer · ↓ bottom answer · → next. Progress stays in this browser.</p>
 </div>
 
 <script>
@@ -621,7 +621,7 @@ function renderQ(){
   $("qbar").style.width=(quiz.i/n*100)+"%";
   $("qstem").textContent=q.stem;
   $("qprompt").textContent=q.prompt;
-  $("qopts").innerHTML=q.options.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${k+1}</span><span>${esc(o)}</span></button>`).join("");
+  $("qopts").innerHTML=q.options.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${k?"↓":"↑"}</span><span>${esc(o)}</span></button>`).join("");
   $("qfb").hidden=true;$("qnext").hidden=true;
 }
 function choose(k){
@@ -636,7 +636,7 @@ function choose(k){
   if(!ok) weak.add(q.c.f); else weak.delete(q.c.f);
   store.set("weak",[...weak]);
   const last=quiz.i===quiz.qs.length-1;
-  $("qnext").innerHTML=(last?"See my score":"Next question")+" <kbd>Enter</kbd>";
+  $("qnext").innerHTML=(last?"See my score":"Next question")+" <kbd>→</kbd>";
   $("qnext").hidden=false; $("qnext").focus();
 }
 $("qopts").addEventListener("click",e=>{const b=e.target.closest(".opt");if(b) choose(+b.dataset.k)});
@@ -693,12 +693,16 @@ document.addEventListener("keydown",e=>{
   const onButton=e.target.tagName==="BUTTON";
   if(view==="cards"&&queue.length){
     if((e.key===" "||e.key==="Enter")&&!onButton){e.preventDefault();stopPlay();flip()}
+    else if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();stopPlay();flip()}
     else if(e.key==="p"||e.key==="P") togglePlay();
     else if(e.key==="1"||e.key==="ArrowLeft") grade(false);
     else if(e.key==="2"||e.key==="ArrowRight") grade(true);
   } else if(view==="quiz"&&quiz&&!$("qrun").hidden){
     const q=quiz.qs[quiz.i];
     if(/^[12]$/.test(e.key)) choose(+e.key-1);
+    else if(e.key==="ArrowUp"&&q.picked===null){e.preventDefault();choose(0)}
+    else if(e.key==="ArrowDown"&&q.picked===null){e.preventDefault();choose(1)}
+    else if(e.key==="ArrowRight"&&q.picked!==null){e.preventDefault();$("qnext").click()}
     else if(e.key==="Enter"&&q.picked!==null&&!onButton){e.preventDefault();$("qnext").click()}
   }
 });
