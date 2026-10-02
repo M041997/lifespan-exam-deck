@@ -135,6 +135,7 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
 .playbar label{font-size:.85rem;color:var(--muted);display:flex;gap:6px;align-items:center}
 .playbar select{font:inherit;font-size:.85rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
 .playbar .num{flex-basis:100%}
+.btn:disabled{opacity:.45;cursor:default}
 @media (prefers-reduced-motion: reduce){.inner,.progress>div{transition:none}}
 </style>
 </head>
@@ -212,6 +213,10 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
         <span class="label">Questions</span>
         <div class="seg" id="qlen"></div>
       </div>
+      <div class="row">
+        <button class="ghost" id="qweak" aria-pressed="false">Only questions I missed (<span id="qweakn">0</span>)</button>
+      </div>
+      <p id="qempty" hidden>No missed questions in these chapters yet. Turn off “Only questions I missed” to test everything.</p>
       <div class="row"><button class="btn primary" id="qstart">Start test</button></div>
     </div>
 
@@ -233,7 +238,8 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
       <div class="row" style="gap:16px"><span class="big" id="rpct"></span><p id="rline"></p></div>
       <div class="bars" id="rbars"></div>
       <div class="row">
-        <button class="btn primary" id="rdrill">Drill the ones I missed</button>
+        <button class="btn primary" id="rretry">Retest the ones I missed</button>
+        <button class="btn" id="rdrill">Flashcards of the ones I missed</button>
         <button class="btn" id="rnew">New test</button>
       </div>
       <span class="label" id="rmissedlabel">Missed questions</span>
@@ -591,11 +597,18 @@ $("drillweak").onclick=()=>{weakOnly=true;buildDeck()};
 
 // practice test
 let qLen=store.get("qlen",50), quiz=null;
-function quizPool(){return CARDS.filter(c=>c.t!==2&&chapters.has(c.ch))}
+let qWeakOnly=false;
+function quizPool(){return CARDS.filter(c=>c.t!==2&&chapters.has(c.ch)&&(!qWeakOnly||weak.has(c.f)))}
 function renderSetup(){
   const n=quizPool().length;
-  $("qlen").innerHTML=[20,50,100].map(v=>`<button data-n="${v}" aria-pressed="${v===qLen}" ${v>n&&v!==20?"disabled":""}>${Math.min(v,n)}</button>`).join("");
+  $("qweakn").textContent=CARDS.filter(c=>c.t!==2&&chapters.has(c.ch)&&weak.has(c.f)).length;
+  $("qweak").setAttribute("aria-pressed",qWeakOnly);
+  const opts=[10,20,50].filter(v=>v<n).concat([0]);
+  const cur=opts.includes(qLen)?qLen:0;
+  $("qlen").innerHTML=opts.map(v=>`<button data-n="${v}" aria-pressed="${v===cur}">${v||"All "+n}</button>`).join("");
+  $("qstart").disabled=!n; $("qempty").hidden=!!n;
 }
+$("qweak").onclick=()=>{qWeakOnly=!qWeakOnly;renderSetup()};
 $("qlen").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;qLen=+b.dataset.n;store.set("qlen",qLen);renderSetup()});
 function makeQ(c){
   const rev=c.t===1&&Math.random()<.5;
@@ -611,7 +624,11 @@ function makeQ(c){
 }
 function startQuiz(){
   const pool=shuffle(quizPool());
-  quiz={qs:pool.slice(0,Math.min(qLen,pool.length)).map(makeQ),i:0};
+  if(!pool.length) return;
+  runQuiz(pool.slice(0,(qLen&&qLen<pool.length)?qLen:pool.length));
+}
+function runQuiz(cards){
+  quiz={qs:cards.map(makeQ),i:0};
   $("qsetup").hidden=true;$("qresult").hidden=true;$("qrun").hidden=false;renderQ();
 }
 function renderQ(){
@@ -644,6 +661,7 @@ $("qnext").onclick=()=>{if(quiz.i<quiz.qs.length-1){quiz.i++;renderQ()}else show
 $("qquit").onclick=()=>{quiz.qs=quiz.qs.filter(q=>q.picked!==null); quiz.qs.length?showResult():resetQuiz()};
 $("qstart").onclick=startQuiz;
 $("rnew").onclick=resetQuiz;
+$("rretry").onclick=()=>runQuiz(shuffle(quiz.missedCards.slice()));
 function resetQuiz(){quiz=null;$("qrun").hidden=true;$("qresult").hidden=true;$("qsetup").hidden=false;renderSetup()}
 function showResult(){
   const qs=quiz.qs, right=qs.filter(q=>q.options[q.picked]===q.answer);
@@ -656,9 +674,9 @@ function showResult(){
     const r=s.filter(q=>q.options[q.picked]===q.answer).length;
     return `<div class="bar"><span>${esc(CH[k])}</span><span class="v">${r}/${s.length}</span><div class="track"><div style="width:${r/s.length*100}%"></div></div></div>`}).join("");
   const missed=qs.filter(q=>q.options[q.picked]!==q.answer);
-  $("rdrill").hidden=!missed.length; $("rmissedlabel").hidden=!missed.length;
+  $("rdrill").hidden=$("rretry").hidden=!missed.length; $("rmissedlabel").hidden=!missed.length;
   $("rmissed").innerHTML=missed.map(q=>`<li><span class="mq">${esc(q.prompt)}</span><span class="ma">${esc(q.answer)}</span></li>`).join("");
-  quiz.missed=missed.map(q=>q.c.f);
+  quiz.missed=missed.map(q=>q.c.f); quiz.missedCards=missed.map(q=>q.c);
 }
 $("rdrill").onclick=()=>{setView("cards");weakOnly=true;queue=shuffle(CARDS.filter(c=>quiz.missed.includes(c.f)));total=queue.length;done=0;renderCard(true)};
 
@@ -673,6 +691,7 @@ function setView(v){
   $("view-quiz").hidden=v!=="quiz";
   $("view-list").hidden=v!=="list";
   if(v==="list") renderList();
+  if(v==="quiz") renderSetup();
 }
 function renderList(){
   const shown=CARDS.filter(c=>chapters.has(c.ch));
