@@ -603,10 +603,10 @@ $("drillweak").onclick=()=>{weakOnly=true;buildDeck()};
 // practice test
 let qLen=store.get("qlen",50), quiz=null;
 let qWeakOnly=false;
-function quizPool(){return CARDS.filter(c=>c.t!==2&&chapters.has(c.ch)&&(!qWeakOnly||weak.has(c.f)))}
+function quizPool(){return CARDS.filter(c=>chapters.has(c.ch)&&(!qWeakOnly||weak.has(c.f)))}
 function renderSetup(){
   const n=quizPool().length;
-  $("qweakn").textContent=CARDS.filter(c=>c.t!==2&&chapters.has(c.ch)&&weak.has(c.f)).length;
+  $("qweakn").textContent=CARDS.filter(c=>chapters.has(c.ch)&&weak.has(c.f)).length;
   $("qweak").setAttribute("aria-pressed",qWeakOnly);
   const opts=[10,20,50].filter(v=>v<n).concat([0]);
   const cur=opts.includes(qLen)?qLen:0;
@@ -616,7 +616,7 @@ function renderSetup(){
     const m=chapterPool(k).length;
     return `<button class="btn" data-ch="${k}" ${m?"":"disabled"}><span>${esc(v)}</span><span class="n">All ${m}</span></button>`}).join("");
 }
-function chapterPool(k){return CARDS.filter(c=>c.t!==2&&c.ch===k&&(!qWeakOnly||weak.has(c.f)))}
+function chapterPool(k){return CARDS.filter(c=>c.ch===k&&(!qWeakOnly||weak.has(c.f)))}
 $("qchap").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;runQuiz(shuffle(chapterPool(b.dataset.ch)))});
 $("qweak").onclick=()=>{qWeakOnly=!qWeakOnly;renderSetup()};
 $("qlen").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;qLen=+b.dataset.n;store.set("qlen",qLen);renderSetup()});
@@ -624,7 +624,7 @@ function makeQ(c){
   const rev=c.t===1&&Math.random()<.5;
   const pick=x=>rev?x.f:x.b, answer=pick(c);
   const alike=x=>x.t===c.t&&x!==c;
-  let opts=shuffle([...new Set(CARDS.filter(x=>x.g===c.g&&alike(x)).map(pick))].filter(v=>v!==answer)).slice(0,1);
+  let opts=shuffle([...new Set(CARDS.filter(x=>x.g===c.g&&(c.g!=="list"||x.ch===c.ch)&&alike(x)).map(pick))].filter(v=>v!==answer)).slice(0,1);
   if(opts.length<1){
     const extra=shuffle([...new Set(CARDS.filter(x=>x.ch===c.ch&&x.g!==c.g&&alike(x)).map(pick))].filter(v=>v!==answer&&!opts.includes(v)));
     opts=opts.concat(extra.slice(0,1-opts.length));
