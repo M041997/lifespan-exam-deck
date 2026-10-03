@@ -136,6 +136,9 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
 .playbar select{font:inherit;font-size:.85rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
 .playbar .num{flex-basis:100%}
 .btn:disabled{opacity:.45;cursor:default}
+.chapbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:8px}
+.chapbtns .btn{justify-content:space-between;text-align:left;padding:12px 14px}
+.chapbtns .n{font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 @media (prefers-reduced-motion: reduce){.inner,.progress>div{transition:none}}
 </style>
 </head>
@@ -218,6 +221,8 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
       </div>
       <p id="qempty" hidden>No missed questions in these chapters yet. Turn off “Only questions I missed” to test everything.</p>
       <div class="row"><button class="btn primary" id="qstart">Start test</button></div>
+      <span class="label">Or test every question in one chapter</span>
+      <div class="chapbtns" id="qchap"></div>
     </div>
 
     <div class="panel" id="qrun" hidden>
@@ -607,7 +612,12 @@ function renderSetup(){
   const cur=opts.includes(qLen)?qLen:0;
   $("qlen").innerHTML=opts.map(v=>`<button data-n="${v}" aria-pressed="${v===cur}">${v||"All "+n}</button>`).join("");
   $("qstart").disabled=!n; $("qempty").hidden=!!n;
+  $("qchap").innerHTML=Object.entries(CH).map(([k,v])=>{
+    const m=chapterPool(k).length;
+    return `<button class="btn" data-ch="${k}" ${m?"":"disabled"}><span>${esc(v)}</span><span class="n">All ${m}</span></button>`}).join("");
 }
+function chapterPool(k){return CARDS.filter(c=>c.t!==2&&c.ch===k&&(!qWeakOnly||weak.has(c.f)))}
+$("qchap").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;runQuiz(shuffle(chapterPool(b.dataset.ch)))});
 $("qweak").onclick=()=>{qWeakOnly=!qWeakOnly;renderSetup()};
 $("qlen").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;qLen=+b.dataset.n;store.set("qlen",qLen);renderSetup()});
 function makeQ(c){
