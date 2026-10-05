@@ -262,10 +262,8 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
     <div class="opts">
       <button class="ghost" id="seenonly" aria-pressed="false">Only marked (<span id="seenn">0</span>)</button>
       <button class="ghost" id="examonly" aria-pressed="false" hidden>On the exam (<span id="examn">0</span>)</button>
-      <button class="ghost" id="seencopy" hidden>Copy my marks</button>
       <button class="ghost" id="seenclear" hidden>Clear marks</button>
     </div>
-    <textarea id="copybox" rows="6" readonly hidden aria-label="Your marked cards"></textarea>
     <p class="num" id="listnote"></p>
     <div id="list" style="display:flex;flex-direction:column;gap:12px"></div>
   </section>
@@ -716,49 +714,76 @@ function setView(v){
   if(v==="list") renderList();
   if(v==="quiz") renderSetup();
 }
-// Cards the class saw on Exam 1 (Sun, Oct 4, 2026). Saved here so everyone sees them, for the final.
-const EXAM_SEEN=[];
-const EXAM=new Set(EXAM_SEEN);
+// Class-wide marks (cards seen on Exam 1, Sun Oct 4 2026), kept in a Google Sheet through an Apps Script web app.
+// Each browser has an anonymous voter id; the script returns how many people marked each card.
+const SHARED_URL="";
+let counts={};
+const cnt=f=>counts[f]||0;
+let voter=store.get("voter","");
+if(!voter){voter=(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2));store.set("voter",voter)}
+let sendQ=new Map(), sendT=null;
+async function loadCounts(){
+  if(!SHARED_URL) return;
+  try{const r=await fetch(SHARED_URL+"?t="+Date.now()); counts=(await r.json()).counts||{}}catch(e){return}
+  if(!store.get("synced",false)&&seen.size) seen.forEach(f=>sendMark(f,true)); else store.set("synced",true);
+  paintCounts();
+}
+function sendMark(f,on){if(!SHARED_URL) return; sendQ.set(f,on); clearTimeout(sendT); sendT=setTimeout(flushMarks,800)}
+async function flushMarks(){
+  const batches=[[[],true],[[],false]];
+  sendQ.forEach((on,f)=>batches[on?0:1][0].push(f)); sendQ.clear();
+  for(const [cards,on] of batches){
+    if(!cards.length) continue;
+    try{
+      const r=await fetch(SHARED_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({voter,cards,on})});
+      const j=await r.json(); if(j.counts){counts=j.counts; store.set("synced",true)}
+    }catch(e){cards.forEach(f=>{if(!sendQ.has(f)) sendQ.set(f,on)}); clearTimeout(sendT); sendT=setTimeout(flushMarks,15000)}
+  }
+  paintCounts();
+}
+function paintCounts(){
+  document.querySelectorAll("[data-cnt]").forEach(el=>{const n=cnt(CARDS[+el.dataset.cnt].f); el.hidden=!n; el.textContent="On exam · "+n});
+  const ex=CARDS.filter(c=>chapters.has(c.ch)&&cnt(c.f)).length;
+  $("examonly").hidden=!SHARED_URL||(!ex&&!examOnly); $("examn").textContent=ex; $("examonly").setAttribute("aria-pressed",examOnly);
+}
 let seen=new Set(store.get("seen",[])), seenOnly=false, examOnly=false, clearArmed=false;
 function renderList(){
   const inCh=CARDS.filter(c=>chapters.has(c.ch));
   const marked=inCh.filter(c=>seen.has(c.f)).length;
   $("seenn").textContent=marked;
   $("seenonly").setAttribute("aria-pressed",seenOnly);
-  $("seenclear").hidden=$("seencopy").hidden=!seen.size;
-  const ex=CARDS.filter(c=>chapters.has(c.ch)&&EXAM.has(c.f)).length;
-  $("examonly").hidden=!EXAM.size; $("examn").textContent=ex; $("examonly").setAttribute("aria-pressed",examOnly);
-  $("listnote").textContent=`${inCh.length} cards · ${marked} marked. Tick the box to mark a card. Red edge = one you’ve missed.`;
+  $("seenclear").hidden=!seen.size;
+  $("listnote").textContent=SHARED_URL
+    ?`${inCh.length} cards · ${marked} marked by you. Tick a card if it was on the exam. Ticks are shared with the class: “On exam · 5” means 5 people marked it. Red edge = one you’ve missed.`
+    :`${inCh.length} cards · ${marked} marked. Tick the box to mark a card. Red edge = one you’ve missed.`;
   const html=Object.keys(CH).filter(k=>chapters.has(k)).map(k=>{
-    const cs=CARDS.filter(c=>c.ch===k&&(!seenOnly||seen.has(c.f))&&(!examOnly||EXAM.has(c.f)));
+    const cs=CARDS.filter(c=>c.ch===k&&(!seenOnly||seen.has(c.f))&&(!examOnly||cnt(c.f)));
+    if(examOnly) cs.sort((a,b)=>cnt(b.f)-cnt(a.f));
     if(!cs.length) return "";
     return `<div class="lhead"><h2>${esc(CH[k])}</h2><span class="num">${cs.length} cards</span></div>
     <div class="list"><div class="lcols"><span>✓</span><span>Question</span><span>Answer</span></div>${
-      cs.map(c=>`<div class="lrow${weak.has(c.f)?" weak":""}${seen.has(c.f)?" seen":""}"><label class="mk"><input type="checkbox" id="mk${c.id}" data-id="${c.id}" aria-label="Mark this card"${seen.has(c.f)?" checked":""}></label><span>${esc(c.f)}${EXAM.has(c.f)?'<span class="exam">On exam</span>':""}</span><span>${esc(c.b)}</span></div>`).join("")}</div>`}).join("");
-  $("list").innerHTML=html||`<p class="num">No marked cards in these chapters yet. Turn off “Only marked” and tick the box next to a card.</p>`;
+      cs.map(c=>`<div class="lrow${weak.has(c.f)?" weak":""}${seen.has(c.f)?" seen":""}"><label class="mk"><input type="checkbox" id="mk${c.id}" data-id="${c.id}" aria-label="Mark this card"${seen.has(c.f)?" checked":""}></label><span>${esc(c.f)}<span class="exam" data-cnt="${c.id}" hidden></span></span><span>${esc(c.b)}</span></div>`).join("")}</div>`}).join("");
+  $("list").innerHTML=html||`<p class="num">No marked cards here yet. Turn off the filter and tick the box next to a card.</p>`;
+  paintCounts();
 }
 $("list").addEventListener("change",e=>{
   const box=e.target.closest("input[data-id]"); if(!box) return;
   const c=CARDS[+box.dataset.id];
   box.checked?seen.add(c.f):seen.delete(c.f);
+  sendMark(c.f,box.checked);
   store.set("seen",[...seen]);
   if(seenOnly&&!box.checked){renderList();return}
   box.closest(".lrow").classList.toggle("seen",box.checked);
   const marked=CARDS.filter(x=>chapters.has(x.ch)&&seen.has(x.f)).length;
-  $("seenn").textContent=marked; $("seenclear").hidden=$("seencopy").hidden=!seen.size;
+  $("seenn").textContent=marked; $("seenclear").hidden=!seen.size;
   $("listnote").textContent=$("listnote").textContent.replace(/\d+ marked/,marked+" marked");
 });
 $("seenonly").onclick=()=>{seenOnly=!seenOnly;renderList()};
 $("examonly").onclick=()=>{examOnly=!examOnly;renderList()};
-$("seencopy").onclick=async()=>{
-  const lines=CARDS.filter(c=>seen.has(c.f)).map(c=>c.f), text=lines.join("\n"), b=$("seencopy");
-  try{await navigator.clipboard.writeText(text);b.textContent=`Copied ${lines.length} marks`;$("copybox").hidden=true}
-  catch(e){const box=$("copybox");box.value=text;box.hidden=false;box.focus();box.select();b.textContent="Select all and copy"}
-  setTimeout(()=>{b.textContent="Copy my marks"},3000);
-};
+
 $("seenclear").onclick=()=>{
   if(!clearArmed){clearArmed=true;$("seenclear").textContent="Tap again to clear all marks";setTimeout(()=>{clearArmed=false;$("seenclear").textContent="Clear marks"},4000);return}
-  clearArmed=false; seen.clear(); store.set("seen",[]); seenOnly=false; $("seenclear").textContent="Clear marks"; renderList();
+  clearArmed=false; seen.forEach(f=>sendMark(f,false)); seen.clear(); store.set("seen",[]); seenOnly=false; $("seenclear").textContent="Clear marks"; renderList();
 };
 $("tab-cards").onclick=()=>{setView("cards");renderCard(true)};
 $("tab-quiz").onclick=()=>setView("quiz");
@@ -842,7 +867,7 @@ function stopPlay(){
 function togglePlay(){playing?stopPlay():startPlay()}
 $("play").onclick=togglePlay;
 
-renderChips(); renderSetup(); buildDeck();
+renderChips(); renderSetup(); buildDeck(); loadCounts();
 </script>
 </body>
 </html>
