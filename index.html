@@ -179,6 +179,7 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
       <button class="ghost" id="dir">Show: term first</button>
       <button class="ghost" id="weakonly" aria-pressed="false">Only cards I missed (<span id="weakn">0</span>)</button>
       <button class="ghost" id="reshuffle">Reshuffle</button>
+      <button class="ghost" id="cardexport">Export my marks</button>
     </div>
     <div class="playbar" id="playbar">
       <button class="btn primary" id="play">▶ Play</button>
@@ -781,10 +782,10 @@ $("list").addEventListener("change",e=>{
 });
 $("seenonly").onclick=()=>{seenOnly=!seenOnly;renderList()};
 $("examonly").onclick=()=>{examOnly=!examOnly;renderList()};
-$("seenexport").onclick=async()=>{
+async function exportMarks(b){
   const rows=CARDS.filter(c=>seen.has(c.f));
-  if(!rows.length) return;
-  const text=rows.map(c=>c.f+"\t"+c.b).join("\n")+"\n", b=$("seenexport");
+  if(!rows.length){b.textContent="No marks yet. Tick cards in All cards.";setTimeout(()=>{b.textContent="Export my marks"},3000);return}
+  const text=rows.map(c=>c.f+"\t"+c.b).join("\n")+"\n";
   // Inside the claude.ai viewer, files go through its downloads capability; elsewhere (GitHub Pages) a plain download works.
   const dl=window.claude&&window.claude.use?await window.claude.use("downloads").catch(()=>null):null;
   if(dl){
@@ -797,7 +798,9 @@ $("seenexport").onclick=async()=>{
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),5000);
   b.textContent=`Exported ${rows.length} cards`; setTimeout(()=>{b.textContent="Export my marks"},3000);
-};
+}
+$("seenexport").onclick=()=>exportMarks($("seenexport"));
+$("cardexport").onclick=()=>exportMarks($("cardexport"));
 
 $("seenclear").onclick=()=>{
   if(!clearArmed){clearArmed=true;$("seenclear").textContent="Tap again to clear all marks";setTimeout(()=>{clearArmed=false;$("seenclear").textContent="Clear marks"},4000);return}
