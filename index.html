@@ -143,6 +143,8 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
 .chapbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:8px}
 .chapbtns .btn{justify-content:space-between;text-align:left;padding:12px 14px}
 .chapbtns .n{font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.exam{display:inline-block;margin-left:6px;font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:1px 6px;vertical-align:1px;white-space:nowrap}
+#copybox{width:100%;font:inherit;font-size:.85rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px}
 @media (prefers-reduced-motion: reduce){.inner,.progress>div{transition:none}}
 </style>
 </head>
@@ -259,8 +261,11 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
   <section id="view-list" hidden style="flex-direction:column;gap:10px">
     <div class="opts">
       <button class="ghost" id="seenonly" aria-pressed="false">Only marked (<span id="seenn">0</span>)</button>
+      <button class="ghost" id="examonly" aria-pressed="false" hidden>On the exam (<span id="examn">0</span>)</button>
+      <button class="ghost" id="seencopy" hidden>Copy my marks</button>
       <button class="ghost" id="seenclear" hidden>Clear marks</button>
     </div>
+    <textarea id="copybox" rows="6" readonly hidden aria-label="Your marked cards"></textarea>
     <p class="num" id="listnote"></p>
     <div id="list" style="display:flex;flex-direction:column;gap:12px"></div>
   </section>
@@ -711,20 +716,25 @@ function setView(v){
   if(v==="list") renderList();
   if(v==="quiz") renderSetup();
 }
-let seen=new Set(store.get("seen",[])), seenOnly=false, clearArmed=false;
+// Cards the class saw on Exam 1 (Sun, Oct 4, 2026). Saved here so everyone sees them, for the final.
+const EXAM_SEEN=[];
+const EXAM=new Set(EXAM_SEEN);
+let seen=new Set(store.get("seen",[])), seenOnly=false, examOnly=false, clearArmed=false;
 function renderList(){
   const inCh=CARDS.filter(c=>chapters.has(c.ch));
   const marked=inCh.filter(c=>seen.has(c.f)).length;
   $("seenn").textContent=marked;
   $("seenonly").setAttribute("aria-pressed",seenOnly);
-  $("seenclear").hidden=!seen.size;
+  $("seenclear").hidden=$("seencopy").hidden=!seen.size;
+  const ex=CARDS.filter(c=>chapters.has(c.ch)&&EXAM.has(c.f)).length;
+  $("examonly").hidden=!EXAM.size; $("examn").textContent=ex; $("examonly").setAttribute("aria-pressed",examOnly);
   $("listnote").textContent=`${inCh.length} cards · ${marked} marked. Tick the box to mark a card. Red edge = one you’ve missed.`;
   const html=Object.keys(CH).filter(k=>chapters.has(k)).map(k=>{
-    const cs=CARDS.filter(c=>c.ch===k&&(!seenOnly||seen.has(c.f)));
+    const cs=CARDS.filter(c=>c.ch===k&&(!seenOnly||seen.has(c.f))&&(!examOnly||EXAM.has(c.f)));
     if(!cs.length) return "";
     return `<div class="lhead"><h2>${esc(CH[k])}</h2><span class="num">${cs.length} cards</span></div>
     <div class="list"><div class="lcols"><span>✓</span><span>Question</span><span>Answer</span></div>${
-      cs.map(c=>`<div class="lrow${weak.has(c.f)?" weak":""}${seen.has(c.f)?" seen":""}"><label class="mk"><input type="checkbox" id="mk${c.id}" data-id="${c.id}" aria-label="Mark this card"${seen.has(c.f)?" checked":""}></label><span>${esc(c.f)}</span><span>${esc(c.b)}</span></div>`).join("")}</div>`}).join("");
+      cs.map(c=>`<div class="lrow${weak.has(c.f)?" weak":""}${seen.has(c.f)?" seen":""}"><label class="mk"><input type="checkbox" id="mk${c.id}" data-id="${c.id}" aria-label="Mark this card"${seen.has(c.f)?" checked":""}></label><span>${esc(c.f)}${EXAM.has(c.f)?'<span class="exam">On exam</span>':""}</span><span>${esc(c.b)}</span></div>`).join("")}</div>`}).join("");
   $("list").innerHTML=html||`<p class="num">No marked cards in these chapters yet. Turn off “Only marked” and tick the box next to a card.</p>`;
 }
 $("list").addEventListener("change",e=>{
@@ -735,10 +745,17 @@ $("list").addEventListener("change",e=>{
   if(seenOnly&&!box.checked){renderList();return}
   box.closest(".lrow").classList.toggle("seen",box.checked);
   const marked=CARDS.filter(x=>chapters.has(x.ch)&&seen.has(x.f)).length;
-  $("seenn").textContent=marked; $("seenclear").hidden=!seen.size;
+  $("seenn").textContent=marked; $("seenclear").hidden=$("seencopy").hidden=!seen.size;
   $("listnote").textContent=$("listnote").textContent.replace(/\d+ marked/,marked+" marked");
 });
 $("seenonly").onclick=()=>{seenOnly=!seenOnly;renderList()};
+$("examonly").onclick=()=>{examOnly=!examOnly;renderList()};
+$("seencopy").onclick=async()=>{
+  const lines=CARDS.filter(c=>seen.has(c.f)).map(c=>c.f), text=lines.join("\n"), b=$("seencopy");
+  try{await navigator.clipboard.writeText(text);b.textContent=`Copied ${lines.length} marks`;$("copybox").hidden=true}
+  catch(e){const box=$("copybox");box.value=text;box.hidden=false;box.focus();box.select();b.textContent="Select all and copy"}
+  setTimeout(()=>{b.textContent="Copy my marks"},3000);
+};
 $("seenclear").onclick=()=>{
   if(!clearArmed){clearArmed=true;$("seenclear").textContent="Tap again to clear all marks";setTimeout(()=>{clearArmed=false;$("seenclear").textContent="Clear marks"},4000);return}
   clearArmed=false; seen.clear(); store.set("seen",[]); seenOnly=false; $("seenclear").textContent="Clear marks"; renderList();
