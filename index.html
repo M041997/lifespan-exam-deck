@@ -262,6 +262,7 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
     <div class="opts">
       <button class="ghost" id="seenonly" aria-pressed="false">Only marked (<span id="seenn">0</span>)</button>
       <button class="ghost" id="examonly" aria-pressed="false" hidden>On the exam (<span id="examn">0</span>)</button>
+      <button class="ghost" id="seenexport" hidden>Export my marks</button>
       <button class="ghost" id="seenclear" hidden>Clear marks</button>
     </div>
     <p class="num" id="listnote"></p>
@@ -752,7 +753,7 @@ function renderList(){
   const marked=inCh.filter(c=>seen.has(c.f)).length;
   $("seenn").textContent=marked;
   $("seenonly").setAttribute("aria-pressed",seenOnly);
-  $("seenclear").hidden=!seen.size;
+  $("seenclear").hidden=$("seenexport").hidden=!seen.size;
   $("listnote").textContent=SHARED_URL
     ?`${inCh.length} cards · ${marked} marked by you. Tick a card if it was on the exam. Ticks are shared with the class: “On exam · 5” means 5 people marked it. Red edge = one you’ve missed.`
     :`${inCh.length} cards · ${marked} marked. Tick the box to mark a card. Red edge = one you’ve missed.`;
@@ -775,11 +776,21 @@ $("list").addEventListener("change",e=>{
   if(seenOnly&&!box.checked){renderList();return}
   box.closest(".lrow").classList.toggle("seen",box.checked);
   const marked=CARDS.filter(x=>chapters.has(x.ch)&&seen.has(x.f)).length;
-  $("seenn").textContent=marked; $("seenclear").hidden=!seen.size;
+  $("seenn").textContent=marked; $("seenclear").hidden=$("seenexport").hidden=!seen.size;
   $("listnote").textContent=$("listnote").textContent.replace(/\d+ marked/,marked+" marked");
 });
 $("seenonly").onclick=()=>{seenOnly=!seenOnly;renderList()};
 $("examonly").onclick=()=>{examOnly=!examOnly;renderList()};
+$("seenexport").onclick=()=>{
+  const rows=CARDS.filter(c=>seen.has(c.f));
+  if(!rows.length) return;
+  const text=rows.map(c=>c.f+"\t"+c.b).join("\n")+"\n";
+  const url=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));
+  const a=document.createElement("a"); a.href=url; a.download="lifespan-exam-marks.txt";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  const b=$("seenexport"); b.textContent=`Exported ${rows.length} cards`; setTimeout(()=>{b.textContent="Export my marks"},3000);
+};
 
 $("seenclear").onclick=()=>{
   if(!clearArmed){clearArmed=true;$("seenclear").textContent="Tap again to clear all marks";setTimeout(()=>{clearArmed=false;$("seenclear").textContent="Clear marks"},4000);return}
