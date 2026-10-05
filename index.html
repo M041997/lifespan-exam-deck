@@ -781,15 +781,22 @@ $("list").addEventListener("change",e=>{
 });
 $("seenonly").onclick=()=>{seenOnly=!seenOnly;renderList()};
 $("examonly").onclick=()=>{examOnly=!examOnly;renderList()};
-$("seenexport").onclick=()=>{
+$("seenexport").onclick=async()=>{
   const rows=CARDS.filter(c=>seen.has(c.f));
   if(!rows.length) return;
-  const text=rows.map(c=>c.f+"\t"+c.b).join("\n")+"\n";
+  const text=rows.map(c=>c.f+"\t"+c.b).join("\n")+"\n", b=$("seenexport");
+  // Inside the claude.ai viewer, files go through its downloads capability; elsewhere (GitHub Pages) a plain download works.
+  const dl=window.claude&&window.claude.use?await window.claude.use("downloads").catch(()=>null):null;
+  if(dl){
+    try{await dl.save({filename:"lifespan-exam-marks.txt",data:text});b.textContent=`Exported ${rows.length} cards`}
+    catch(e){b.textContent="Export didn’t go through"}
+    setTimeout(()=>{b.textContent="Export my marks"},3000); return;
+  }
   const url=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));
   const a=document.createElement("a"); a.href=url; a.download="lifespan-exam-marks.txt";
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),5000);
-  const b=$("seenexport"); b.textContent=`Exported ${rows.length} cards`; setTimeout(()=>{b.textContent="Export my marks"},3000);
+  b.textContent=`Exported ${rows.length} cards`; setTimeout(()=>{b.textContent="Export my marks"},3000);
 };
 
 $("seenclear").onclick=()=>{
