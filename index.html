@@ -123,12 +123,16 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
 .lhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:8px 0 0}
 .lhead h2{margin:0;font-family:var(--display);font-size:1.25rem}
 .list{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.lcols,.lrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
+.lcols,.lrow{display:grid;grid-template-columns:2.6em minmax(0,1fr) minmax(0,1.3fr)}
 .lcols{background:var(--accent-soft);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted)}
 .lcols span,.lrow span{padding:10px 14px;min-width:0;overflow-wrap:anywhere}
 .lrow{border-top:1px solid var(--line)}
-.lrow span:first-child{font-weight:700;border-right:1px solid var(--line)}
-.lrow.weak span:first-child{box-shadow:inset 3px 0 0 var(--bad)}
+.lcols span:first-child{padding-inline:0;text-align:center}
+.lrow span:nth-child(2){font-weight:700;border-right:1px solid var(--line)}
+.mk{display:flex;justify-content:center;align-items:flex-start;padding-top:11px;border-right:1px solid var(--line);cursor:pointer}
+.mk input{width:1.15em;height:1.15em;margin:0;accent-color:var(--good);cursor:pointer}
+.lrow.seen{background:var(--good-soft)}
+.lrow.weak .mk{box-shadow:inset 3px 0 0 var(--bad)}
 @media (max-width:480px){.lcols span,.lrow span{padding:9px 10px;font-size:.9rem}}
 .playbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .playbar .btn{padding:9px 18px;min-width:7.5em}
@@ -252,7 +256,11 @@ kbd{font-family:var(--body);font-size:.72rem;border:1px solid currentColor;borde
     </div>
   </section>
 
-  <section id="view-list" hidden>
+  <section id="view-list" hidden style="flex-direction:column;gap:10px">
+    <div class="opts">
+      <button class="ghost" id="seenonly" aria-pressed="false">Only marked (<span id="seenn">0</span>)</button>
+      <button class="ghost" id="seenclear" hidden>Clear marks</button>
+    </div>
     <p class="num" id="listnote"></p>
     <div id="list" style="display:flex;flex-direction:column;gap:12px"></div>
   </section>
@@ -703,15 +711,38 @@ function setView(v){
   if(v==="list") renderList();
   if(v==="quiz") renderSetup();
 }
+let seen=new Set(store.get("seen",[])), seenOnly=false, clearArmed=false;
 function renderList(){
-  const shown=CARDS.filter(c=>chapters.has(c.ch));
-  $("listnote").textContent=`${shown.length} cards. Red edge = one you’ve missed.`;
-  $("list").innerHTML=Object.keys(CH).filter(k=>chapters.has(k)).map(k=>{
-    const cs=CARDS.filter(c=>c.ch===k);
+  const inCh=CARDS.filter(c=>chapters.has(c.ch));
+  const marked=inCh.filter(c=>seen.has(c.f)).length;
+  $("seenn").textContent=marked;
+  $("seenonly").setAttribute("aria-pressed",seenOnly);
+  $("seenclear").hidden=!seen.size;
+  $("listnote").textContent=`${inCh.length} cards · ${marked} marked. Tick the box to mark a card. Red edge = one you’ve missed.`;
+  const html=Object.keys(CH).filter(k=>chapters.has(k)).map(k=>{
+    const cs=CARDS.filter(c=>c.ch===k&&(!seenOnly||seen.has(c.f)));
+    if(!cs.length) return "";
     return `<div class="lhead"><h2>${esc(CH[k])}</h2><span class="num">${cs.length} cards</span></div>
-    <div class="list"><div class="lcols"><span>Question</span><span>Answer</span></div>${
-      cs.map(c=>`<div class="lrow${weak.has(c.f)?" weak":""}"><span>${esc(c.f)}</span><span>${esc(c.b)}</span></div>`).join("")}</div>`}).join("");
+    <div class="list"><div class="lcols"><span>✓</span><span>Question</span><span>Answer</span></div>${
+      cs.map(c=>`<div class="lrow${weak.has(c.f)?" weak":""}${seen.has(c.f)?" seen":""}"><label class="mk"><input type="checkbox" id="mk${c.id}" data-id="${c.id}" aria-label="Mark this card"${seen.has(c.f)?" checked":""}></label><span>${esc(c.f)}</span><span>${esc(c.b)}</span></div>`).join("")}</div>`}).join("");
+  $("list").innerHTML=html||`<p class="num">No marked cards in these chapters yet. Turn off “Only marked” and tick the box next to a card.</p>`;
 }
+$("list").addEventListener("change",e=>{
+  const box=e.target.closest("input[data-id]"); if(!box) return;
+  const c=CARDS[+box.dataset.id];
+  box.checked?seen.add(c.f):seen.delete(c.f);
+  store.set("seen",[...seen]);
+  if(seenOnly&&!box.checked){renderList();return}
+  box.closest(".lrow").classList.toggle("seen",box.checked);
+  const marked=CARDS.filter(x=>chapters.has(x.ch)&&seen.has(x.f)).length;
+  $("seenn").textContent=marked; $("seenclear").hidden=!seen.size;
+  $("listnote").textContent=$("listnote").textContent.replace(/\d+ marked/,marked+" marked");
+});
+$("seenonly").onclick=()=>{seenOnly=!seenOnly;renderList()};
+$("seenclear").onclick=()=>{
+  if(!clearArmed){clearArmed=true;$("seenclear").textContent="Tap again to clear all marks";setTimeout(()=>{clearArmed=false;$("seenclear").textContent="Clear marks"},4000);return}
+  clearArmed=false; seen.clear(); store.set("seen",[]); seenOnly=false; $("seenclear").textContent="Clear marks"; renderList();
+};
 $("tab-cards").onclick=()=>{setView("cards");renderCard(true)};
 $("tab-quiz").onclick=()=>setView("quiz");
 $("tab-list").onclick=()=>setView("list");
